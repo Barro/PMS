@@ -13,7 +13,7 @@ NO_COMPRESS_CSS = True
 
 
 ADMINS = (
-	('sivu', 'sivu@paeae.fi'),
+	('root', 'jussi@jussiblet.vpn'),
 )
 
 INTERNAL_IPS = ('127.0.0.1',)

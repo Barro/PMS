@@ -1,5 +1,7 @@
 # Create your views here.
 
+from django import forms
+from django.core import serializers
 from django.shortcuts import render_to_response
 from django.template import RequestContext
 from pms.party.models import Party
@@ -7,11 +9,11 @@ from django.template import RequestContext
 from django.contrib.auth.decorators import login_required, permission_required
 from party.decorators import require_party
 from party.util import get_party
-from schedule.models import Schedule,Event,EventForm,EventHistory
+from schedule.models import Schedule, Event, EventForm, LocationForm, EventHistory
 from django.http import HttpResponse,HttpResponseNotFound
 from django.db.models import Q
 from datetime import datetime,timedelta
-
+import json
 
 @require_party
 def schedule(request,futureonly=True):
@@ -127,3 +129,89 @@ def changelog(request):
         context_instance=RequestContext(request)
         )
 
+
+@require_party
+@permission_required('schedule.admin')
+def createlocation(request):
+    success = False
+    if request.method != 'POST':
+        form = LocationForm()
+        return render_to_response(
+            "locations_createform.html", {
+                'form':form,
+                'success':success
+                },
+            context_instance=RequestContext(request)
+            )
+
+    form = LocationForm(request.POST)
+    if not form.is_valid():
+        return render_to_response(
+            "locations_createform.html", {
+                'form':form,
+                'success':success
+                },
+            context_instance=RequestContext(request)
+            )
+
+    try:
+        location = form.save(commit=False)
+        location.save()
+    except Exception as e:
+        print e
+        return
+    success = True
+    return admin(request, location.pk, True, 'Location created', party=request.party)
+
+
+@require_party
+def eventsjson(request):
+    """Shows all non-hidden events in .JSON format."""
+
+    party = Party.objects.get(slug=request.party)
+    try:
+        schedule = Schedule.objects.get(party=party)
+    except Schedule.DoesNotExist:
+        return {}
+    events = Event.objects.filter(schedule=schedule, hidden=False).order_by("time", "order")
+    data = serializers.serialize("json", events)
+    return HttpResponse(
+        data,
+        mimetype="application/javascript")
+
+
+class AsmCsvImportForm(forms.Form):
+    subject = forms.CharField(label=u"Assembly CSV data", widget=forms.Textarea)
+
+@require_party
+@permission_required('schedule.admin')
+def importasmcsv(request):
+    success = False
+    if request.method != 'POST':
+        form = AsmCsvImportForm()
+        return render_to_response(
+            "importasmcsvform.html", {
+                'form':form,
+                'success':success
+                },
+            context_instance=RequestContext(request)
+            )
+
+    form = AsmCsvImportForm(request.POST)
+    if not form.is_valid():
+        return render_to_response(
+            "locations_createform.html", {
+                'form':form,
+                'success':success
+                },
+            context_instance=RequestContext(request)
+            )
+
+    try:
+        location = form.save(commit=False)
+        location.save()
+    except Exception as e:
+        print e
+        return
+    success = True
+    return admin(request, location.pk, True, 'Location created', party=request.party)

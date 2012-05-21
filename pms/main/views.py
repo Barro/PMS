@@ -10,7 +10,7 @@ from party.decorators import require_party
 from party.models import Party
 from party.util import get_party
 
-import sms.views
+#import sms.views
 
 def index(request):
 	p = {}

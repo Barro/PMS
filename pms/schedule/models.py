@@ -14,14 +14,61 @@ import django.dispatch
 
 schedule_updated = django.dispatch.Signal()
 
+class Schedule(models.Model):
+	name = models.CharField(max_length=255,unique=True)
+
+	party = models.ForeignKey('party.Party')
+#	 events = models.ManyToManyField(Event)
+	
+
+	def __unicode__(self):
+		return self.name
+	class Meta:
+		permissions = (
+			('admin','admin schedule'),
+			('manage','manage schedule'),
+		)
+
+
+class Location(models.Model):
+	name = models.CharField(max_length=255, blank=False, null=False)
+	url = models.URLField(blank=True, null=True)
+	description = models.TextField(blank=True)
+
+	schedule = models.ForeignKey('schedule.Schedule')
+
+	def __unicode__(self):
+		return u"%s (%s)" % (self.name, self.schedule)
+
+	# i18n
+	name_fi = models.CharField(u"Nimi suomeksi", max_length=255, blank=True, null=True)
+	description_fi = models.TextField(u"Kuvaus suomeksi", blank=True)
+
+	class Meta:
+		ordering = ["schedule", "name"]
+		permissions = (
+			('admin','admin schedule locations'),
+			('manage','manage schedule locations'),
+		) 
 
 class Event(models.Model):
 	name = models.CharField(max_length=255, blank=True, null=True)
 	time = models.DateTimeField()
-	end_time = models.DateTimeField(blank=True, null=True,help_text="Default is start_time + 5 minutes")
-	location_url = models.URLField(blank=True, null=True)
-	location = models.CharField(max_length=255, blank=True, null=True)
+	end_time = models.DateTimeField(blank=True, null=True, help_text="Default is start_time + 5 minutes")
+	original_time = models.DateTimeField(u"Original event time.")
+	url = models.CharField(max_length=255, blank=True)
+	description = models.TextField(blank=True)
 	hidden = models.BooleanField(default=False)
+	canceled = models.BooleanField(default=False)
+	cancel_reason = models.TextField(u"Cancellation reason", blank=True)
+	categories = models.CharField("Comma separated list of tag-like categories.", max_length=255, blank=True)
+        order = models.FloatField(default=0.0)
+
+	# i18n
+	name_fi = models.CharField(u"Nimi suomeksi", max_length=255, blank=True, null=True)
+	description_fi = models.TextField(u"Kuvaus suomeksi", blank=True)
+
+	location = models.ForeignKey('schedule.Location', null=True)
 	schedule = models.ForeignKey('schedule.Schedule')
 
 	def save(self, *args, **kwargs):
@@ -29,6 +76,9 @@ class Event(models.Model):
 
 	def __unicode__(self):
 		return u"%s %s" % (self.name,self.time)
+
+	def default_original_time(self):
+		return self.time
 
 	def default_end(self):
 		"""
@@ -70,20 +120,6 @@ class Event(models.Model):
 			('manage','manage schedule events'),
 		) 
 
-class Schedule(models.Model):
-	name = models.CharField(max_length=255,unique=True)
-
-	party = models.ForeignKey('party.Party')
-#	 events = models.ManyToManyField(Event)
-	
-
-	def __unicode__(self):
-		return self.name
-	class Meta:
-		permissions = (
-			('admin','admin schedule'),
-			('manage','manage schedule'),
-		)
 
 @receiver(pre_save, sender=Event, dispatch_uid="unique_event_presave")
 def event_onsave(sender, instance, raw, **kwargs):
@@ -135,3 +171,9 @@ class EventHistory(models.Model):
 class EventForm(forms.ModelForm):
 	class Meta:
 		model = Event
+		exclude = ('original_time',)
+
+
+class LocationForm(forms.ModelForm):
+	class Meta:
+		model = Location

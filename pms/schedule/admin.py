@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from models import Schedule,Event
+from models import Schedule, Event, Location
 
 #class ScheduleInline(admin.StackedInline):
 #    model = Schedule.events.through
@@ -10,5 +10,6 @@ from models import Schedule,Event
 #    inlines = [ScheduleInline]
 
 admin.site.register(Schedule)
+admin.site.register(Location)
 admin.site.register(Event)
 #admin.site.register(Event, EventAdmin)

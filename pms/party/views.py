@@ -9,7 +9,6 @@ from django.core.urlresolvers import reverse
 from models import Party,PartyForm
 
 def index(request):
-	
 	if hasattr(request.session,'party'):
 		del request.session['party']
 	

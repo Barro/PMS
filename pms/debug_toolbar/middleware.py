@@ -94,6 +94,7 @@ class DebugToolbarMiddleware(object):
                         'debug_toolbar/redirect.html',
                         {'redirect_to': redirect_to}
                     )
+
         if response.status_code == 200:
             for panel in self.debug_toolbars[request].panels:
                 panel.process_response(request, response)
