@@ -1,0 +1,16 @@
+{% if success %}
+    <div class="success menubar">{{status}}</div>
+{% endif %}
+    <div class="error menubar" id="scheduledelete"></div>
+
+<form action="{% block form_target %}{% endblock %}" method="POST"
+id="createLocation">
+{% csrf_token %}
+<table>
+{{form.as_table}}
+</table>
+{% block location_form_extra %}
+
+{% endblock %}
+</form>
+

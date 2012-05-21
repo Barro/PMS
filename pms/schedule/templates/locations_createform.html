@@ -1,0 +1,4 @@
+{% extends "locations_formbase.html" %}
+{% block form_target %}
+{% url schedule.views.createlocation party=party.slug %}
+{% endblock %}

@@ -1,0 +1,7 @@
+{% extends "locations_formbase.html" %}
+{% block form_target %}
+{% url schedule-admin party=party.slug location=location.id  %}
+{% endblock %}
+{% block event_form_extra %}
+<div class="link" id="delete_{{location.id}}">Delete</div>
+{% endblock %}
