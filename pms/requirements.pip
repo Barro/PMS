@@ -10,3 +10,4 @@ wsgiref==0.1.2
 wstools==0.3
 lxml==2.3
 PIL==1.1.7
+unidecode==0.04.13

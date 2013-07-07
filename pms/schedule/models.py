@@ -55,7 +55,7 @@ class Event(models.Model):
 	name = models.CharField(max_length=255, blank=True, null=True)
 	time = models.DateTimeField()
 	end_time = models.DateTimeField(blank=True, null=True, help_text="Default is start_time + 5 minutes")
-	original_time = models.DateTimeField(u"Original event time.")
+	original_time = models.DateTimeField(help_text=u"Can not be set when creating an event.")
 	url = models.CharField(max_length=255, blank=True)
 	description = models.TextField(blank=True)
 	hidden = models.BooleanField(default=False)
@@ -63,6 +63,10 @@ class Event(models.Model):
 	cancel_reason = models.TextField(u"Cancellation reason", blank=True)
 	categories = models.CharField("Comma separated list of tag-like categories.", max_length=255, blank=True)
         order = models.FloatField(default=0.0)
+#        major = models.BooleanField(default=False)
+#        bigscreen = models.BooleanField(default=False)
+#        class_ = models.TextField(blank=True)
+#        asmtv = models.BooleanField(defauls=False)
 
 	# i18n
 	name_fi = models.CharField(u"Nimi suomeksi", max_length=255, blank=True, null=True)
@@ -171,7 +175,7 @@ class EventHistory(models.Model):
 class EventForm(forms.ModelForm):
 	class Meta:
 		model = Event
-		exclude = ('original_time',)
+		#exclude = ('original_time',)
 
 
 class LocationForm(forms.ModelForm):

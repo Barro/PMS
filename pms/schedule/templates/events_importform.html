@@ -1,0 +1,17 @@
+{% if success %}
+    <div class="success menubar">{{status}}</div>
+{% endif %}
+    <div class="error menubar" id="scheduledelete"></div>
+
+<form enctype="multipart/form-data" action="{% url schedule.views.importschedule party=party.slug %}" method="POST"
+id="importButton">
+<p>Upload csv file.</p>
+{% csrf_token %}
+<table>
+{{form.as_table}}
+</table>
+{% block event_form_extra %}
+
+{% endblock %}
+</form>
+

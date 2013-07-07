@@ -13,7 +13,8 @@ Schedule
     <span class="sectionName">Upcoming events</span>
     <span id="schedule_loading">&nbsp;</span>{% if perms.event.manage %}<span
     class="right"><span class="link" id="postSchedule">add</span>&nbsp;<span
-    class="link" id="showHistory">history</span></span>{% endif %}
+    class="link" id="showHistory">history</span>
+    <span id="importSchedule" class="link">import</span></span>{% endif %}
 <hr/>
 <br/>
 <center>
@@ -133,6 +134,36 @@ Schedule
                 dlg.dialog('open');
             });
         });
+
+
+        $('#importSchedule').click(function() {
+        var dlg2 = $('<div></div>');
+        dlg2.dialog({
+            autoOpen: false,
+            title: "Import events",
+            width: 350,
+            buttons : { 
+                "Import" : function() { $('#importButton').ajaxSubmit({
+                        target: dlg2,
+                        success:function() {
+                            refresh_events();
+                            dlg2.dialog('close');
+                        }
+                    }); 
+                }, 
+                "Close" : function(){ dlg2.dialog('close');
+                                    window.location = window.location;
+                                    }
+            }
+        });
+ 	      dlg2.load('{% url schedule.views.importschedule party=party.slug %}',function() { 
+                dlg2.dialog('open');
+	
+/*         	$('#importSchedule').append('{{forms.Filefield}}');*/
+        });
+	});
+
+
         $('#showHistory').click(function() {
             dlg.load('{% url schedule.views.changelog party=party.slug %}',function() { 
                 dlg.dialog('option','title','Event changelog');
