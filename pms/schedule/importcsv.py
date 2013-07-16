@@ -69,6 +69,29 @@ def convertNameToKey(name):
     return special_character_normalized.strip("-")
 
 
+def update_locations(schedule, events):
+    existing_locations = {}
+    for event in events:
+        location_name = event['location_en'].decode('UTF-8')
+        location_key = convertNameToKey(location_name)
+        if location_key in existing_locations:
+            continue
+        location = None
+        try:
+            location = Location.objects.get(key=location_key)
+        except Location.DoesNotExist:
+            location = models.Location()
+            location.key = location_key
+            location.name = location_name
+            location.url = event.get('location_url', None)
+            location.name_fi = event['location_fi']
+            location.schedule = schedule
+            location.save()
+        existing_locations[location_key] = location
+
+    return existing_locations
+
+
 def parse_csv(schedule, data):
     sniff_data = data[:50]
     if ";" not in sniff_data and "\t" not in sniff_data:
@@ -115,10 +138,10 @@ def parse_csv(schedule, data):
                     (field_count, len(fields)), "warning")]
         raise ScheduleImportError(messages)
 
-    finnish = {}
-    english = {}
+    rows = list(reader)
+    locations = update_locations(schedule, rows)
 
-    for row in reader:
+    for row in rows:
         if row['public'] != 'Yes':
             continue
         errors = get_row_errors(fields, row)
@@ -161,63 +184,28 @@ def parse_csv(schedule, data):
                 (str(row),)
                 ]
             raise ScheduleImportError(messages)
-#        event = form.save(commit=False)
-#        event.original_time = event.time
-#        party = Party.objects.get(slug=request.party)
-#        event.save()
-#        for events, lang in [(finnish, 'fi'), (english, 'en')]:
+
         event = models.Event()
         categories = ""
         if (row['major'].lower() == 'yes'):
             categories += "major,"
-        if (row['asmtv'].lower() == 'yes'): 
-            categories += "asmtv,"      
+        if (row['asmtv'].lower() == 'yes'):
+            categories += "asmtv,"
         if (row['bigscreen'].lower() == 'yes'):
             categories += "bigscreen,"
         if (row['class_'].lower() == 'yes'):
-            categories += row['class_'].decode('UTF-8')+","
+            categories += row['class_'].decode('UTF-8') + ","
         event.categories = categories
         event.time = extract_date(row['start_date'])
-        event.end_time =  extract_date(row['finish_date'])
+        event.end_time = extract_date(row['finish_date'])
         event.original_time = extract_date(row['start_date'])
-        event.name_fi = row['title_fi'].decode('UTF-8')
         event.name = row['title_en'].decode('UTF-8')
+        event.name_fi = row['title_fi'].decode('UTF-8')
         event.description_fi = row['description_fi'].decode('UTF-8')
         event.description = row['description_en'].decode('UTF-8')
         event.url = row['url']
-#            event.class_ = row['class_'].decode('UTF-8')
-#            event.location = row['location_%s' % lang].decode('UTF-8')
-#            event.location_url = row['location_url']
-#            event.description = row['description_%s' % lang].decode('UTF-8')
         event.canceled = (row['canceled'].lower() == 'yes')
         event.schedule = schedule
-        locationname = convertNameToKey(row['location_en'].decode('UTF-8'))
-	location = None
-        try: 
-                location = Location.objects.get(name=location)
-        except Location.DoesNotExist:
-                location = models.Location()
-                location.name = locationname
-                location.url = row['location_url']
-		location.schedule = schedule
-                location.save()
-        event.location = location
-	
-#	latest_poll_list = Poll.objects.order_by('-pub_date')	
-
-#        import pdb
-#        pdb.set_trace()
-
-#       location and schedule
-
-#            events[item_id] = event
+        location_key = convertNameToKey(row['location_en'].decode('UTF-8'))
+        event.location = locations[location_key]
         event.save()
-        print "event save"
-    public_csv = public_data.getvalue()
-
-
-    return {
-        "finnish": finnish,
-        "english": english,
-        "public_csv": public_csv
-        }

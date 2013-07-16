@@ -31,7 +31,8 @@ class Schedule(models.Model):
 
 
 class Location(models.Model):
-	name = models.CharField(max_length=255, blank=False, null=False)
+        key = models.CharField(max_length=255, blank=False, null=False)
+        name = models.CharField(max_length=255, blank=False, null=False)
 	url = models.URLField(blank=True, null=True)
 	description = models.TextField(blank=True)
 
