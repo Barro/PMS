@@ -4,6 +4,7 @@ import datetime
 import models
 from schedule.models import Location
 from party.models import Party
+from schedule.models import Event
 import string
 import re
 import unidecode
@@ -90,8 +91,15 @@ def update_locations(schedule, events):
         existing_locations[location_key] = location
 
     return existing_locations
-
-
+    
+def deleteExtraEvents(newevents):
+    print newevents
+    eventsToDelete = Event.objects.all()
+    for event in eventsToDelete:
+        if not event.name in newevents:
+        		event.delete()
+    return
+		
 def parse_csv(schedule, data):
     sniff_data = data[:50]
     if ";" not in sniff_data and "\t" not in sniff_data:
@@ -140,6 +148,7 @@ def parse_csv(schedule, data):
 
     rows = list(reader)
     locations = update_locations(schedule, rows)
+    events = []
 
     for row in rows:
         if row['public'] != 'Yes':
@@ -185,7 +194,14 @@ def parse_csv(schedule, data):
                 ]
             raise ScheduleImportError(messages)
 
-        event = models.Event()
+        eventname = convertNameToKey(row['title_en'].decode('UTF-8'))
+        event = None
+        try:
+            event = Event.objects.get(name=eventname)
+        except Event.DoesNotExist:        
+            event = models.Event()
+        events.append(eventname)
+        event.name = eventname        	  
         categories = ""
         if (row['major'].lower() == 'yes'):
             categories += "major,"
@@ -199,7 +215,6 @@ def parse_csv(schedule, data):
         event.time = extract_date(row['start_date'])
         event.end_time = extract_date(row['finish_date'])
         event.original_time = extract_date(row['start_date'])
-        event.name = row['title_en'].decode('UTF-8')
         event.name_fi = row['title_fi'].decode('UTF-8')
         event.description_fi = row['description_fi'].decode('UTF-8')
         event.description = row['description_en'].decode('UTF-8')
@@ -209,3 +224,5 @@ def parse_csv(schedule, data):
         location_key = convertNameToKey(row['location_en'].decode('UTF-8'))
         event.location = locations[location_key]
         event.save()
+    deleteExtraEvents(events)
+		
