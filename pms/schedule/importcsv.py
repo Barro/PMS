@@ -3,14 +3,15 @@ import csv
 import datetime
 import models
 from schedule.models import Location
-from party.models import Party
 from schedule.models import Event
 import string
 import re
 import unidecode
 
+
 def extract_date(date):
     return datetime.datetime.strptime(date, "%a %d.%m.%y %H:%M")
+
 
 def get_row_errors(fields, field_data):
     errors = []
@@ -63,6 +64,7 @@ KEY_CHARACTERS = (string.ascii_letters.decode('ascii')
                   + string.digits.decode('ascii'))
 NORMALIZE_REGEX = re.compile(ur'([^%s]+)' % KEY_CHARACTERS)
 
+
 def convertNameToKey(name):
     ascii_normalized = unidecode.unidecode(name)
     special_character_normalized = NORMALIZE_REGEX.sub(
@@ -70,37 +72,7 @@ def convertNameToKey(name):
     return special_character_normalized.strip("-")
 
 
-def update_locations(schedule, events):
-    existing_locations = {}
-    for event in events:
-        location_name = event['location_en'].decode('UTF-8')
-        location_key = convertNameToKey(location_name)
-        if location_key in existing_locations:
-            continue
-        location = None
-        try:
-            location = Location.objects.get(key=location_key)
-        except Location.DoesNotExist:
-            location = models.Location()
-            location.key = location_key
-            location.name = location_name
-            location.url = event.get('location_url', None)
-            location.name_fi = event['location_fi']
-            location.schedule = schedule
-            location.save()
-        existing_locations[location_key] = location
-
-    return existing_locations
-    
-def deleteExtraEvents(newevents):
-    print newevents
-    eventsToDelete = Event.objects.all()
-    for event in eventsToDelete:
-        if not event.name in newevents:
-        		event.delete()
-    return
-		
-def parse_csv(schedule, data):
+def parse_csv(data):
     sniff_data = data[:50]
     if ";" not in sniff_data and "\t" not in sniff_data:
         raise InvalidParserError()
@@ -147,7 +119,7 @@ def parse_csv(schedule, data):
         raise ScheduleImportError(messages)
 
     rows = list(reader)
-    locations = update_locations(schedule, rows)
+    locations = {}
     events = []
 
     for row in rows:
@@ -184,45 +156,108 @@ def parse_csv(schedule, data):
                 (str(row),)
                 ]
             raise ScheduleImportError(messages)
-        item_id = None
-        try:
-            item_id = int(row['id'])
-        except ValueError, e:
-            messages = [
-                (u"Row ID '%s' was not numeric." % row['id'], "warning"),
-                (str(row),)
-                ]
-            raise ScheduleImportError(messages)
 
-        eventname = convertNameToKey(row['title_en'].decode('UTF-8'))
-        event = None
+        location = parse_location(row)
+        locations[location['key']] = location
+        event = parse_event(row)
+        event['location'] = location
+        events.append(event)
+
+    return locations, events
+
+
+def parse_event(row):
+    try:
+        event_id = int(row['id'])
+    except ValueError:
+        messages = [
+            (u"Row ID '%s' was not numeric." % row['id'], "warning"),
+            (str(row),)
+            ]
+        raise ScheduleImportError(messages)
+    event = {'key': event_id}
+    event['name'] = row['title_en'].decode('UTF-8')
+    event['name_fi'] = row['title_fi'].decode('UTF-8')
+    categories = []
+    if (row['major'].lower() == 'yes'):
+        categories.append("major")
+    if (row['asmtv'].lower() == 'yes'):
+        categories.append("asmtv")
+    if (row['bigscreen'].lower() == 'yes'):
+        categories.append("bigscreen")
+    if (row['class_'].lower() == 'yes'):
+        categories.append(row['class_'].decode('UTF-8'))
+    event['categories'] = ",".join(categories)
+    event['start_time'] = extract_date(row['start_date'])
+    event['end_time'] = extract_date(row['finish_date'])
+    event['original_time'] = extract_date(row['start_date'])
+    event['description'] = row['description_en'].decode('UTF-8')
+    event['description_fi'] = row['description_fi'].decode('UTF-8')
+    event['url'] = row['url']
+    event['canceled'] = (row['canceled'].lower() == 'yes')
+    return event
+
+
+def parse_location(row):
+    location_name = row['location_en'].decode('UTF-8')
+    location = {}
+    location['key'] = convertNameToKey(location_name)
+    location['name'] = location_name
+    location['name_fi'] = row['location_fi']
+    location['url'] = row.get('location_url', None)
+    return location
+
+
+def delete_unknown_locations(schedule, all_locations, known_locations):
+    for location in all_locations:
+        if not location.key in known_locations:
+            location.delete()
+
+
+def delete_unknown_events(schedule, all_events, known_events):
+    for event in all_events:
+        if not event.key in known_events:
+            event.delete()
+
+
+def update_schedule_database(schedule, locations, events):
+    all_locations = Location.objects.filter(schedule=schedule)
+    keyed_locations = {}
+    for location in all_locations:
+        keyed_locations[location.key] = location
+    delete_unknown_locations(schedule, all_locations, locations)
+    all_events = Event.objects.filter(schedule=schedule)
+    event_keys = set([event['key'] for event in events])
+    delete_unknown_events(schedule, all_events, event_keys)
+
+    for location in locations.values():
         try:
-            event = Event.objects.get(name=eventname)
-        except Event.DoesNotExist:        
-            event = models.Event()
-        events.append(eventname)
-        event.name = eventname        	  
-        categories = ""
-        if (row['major'].lower() == 'yes'):
-            categories += "major,"
-        if (row['asmtv'].lower() == 'yes'):
-            categories += "asmtv,"
-        if (row['bigscreen'].lower() == 'yes'):
-            categories += "bigscreen,"
-        if (row['class_'].lower() == 'yes'):
-            categories += row['class_'].decode('UTF-8') + ","
-        event.categories = categories
-        event.time = extract_date(row['start_date'])
-        event.end_time = extract_date(row['finish_date'])
-        event.original_time = extract_date(row['start_date'])
-        event.name_fi = row['title_fi'].decode('UTF-8')
-        event.description_fi = row['description_fi'].decode('UTF-8')
-        event.description = row['description_en'].decode('UTF-8')
-        event.url = row['url']
-        event.canceled = (row['canceled'].lower() == 'yes')
-        event.schedule = schedule
-        location_key = convertNameToKey(row['location_en'].decode('UTF-8'))
-        event.location = locations[location_key]
-        event.save()
-    deleteExtraEvents(events)
-		
+            location_obj = Location.objects.get(
+                schedule=schedule, key=location['key'])
+        except Location.DoesNotExist:
+            location_obj = models.Location()
+        location_obj.schedule = schedule
+        location_obj.name = location['name']
+        location_obj.name_fi = location['name_fi']
+        location_obj.url = location['url']
+        location_obj.save()
+
+    for event in events:
+        try:
+            event_obj = Event.objects.get(schedule=schedule, key=event['key'])
+        except Event.DoesNotExist:
+            event_obj = models.Event()
+        event_obj.schedule = schedule
+        event_obj.location = keyed_locations[event['location']['key']]
+        event_obj.key = event['key']
+        event_obj.name = event['name']
+        event_obj.name_fi = event['name_fi']
+        event_obj.time = event['start_time']
+        event_obj.end_time = event['end_time']
+        event_obj.original_time = event['original_time']
+        event_obj.url = event['url']
+        event_obj.description = event['description']
+        event_obj.description_fi = event['description_fi']
+        event_obj.categories = event['categories']
+        event_obj.canceled = event['canceled']
+        event_obj.save()

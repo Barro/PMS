@@ -52,7 +52,9 @@ class Location(models.Model):
 			('manage','manage schedule locations'),
 		) 
 
+
 class Event(models.Model):
+        key = models.CharField(max_length=255, blank=False, null=False)
 	name = models.CharField(max_length=255, blank=True, null=True)
 	time = models.DateTimeField()
 	end_time = models.DateTimeField(blank=True, null=True, help_text="Default is start_time + 5 minutes")

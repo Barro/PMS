@@ -2,22 +2,21 @@
 
 from django import forms
 from django.core import serializers
+from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import render_to_response
-from django.template import RequestContext
-from pms.party.models import Party
+from django.http import HttpResponse, HttpResponseNotFound
 from django.template import RequestContext
 from django.contrib.auth.decorators import login_required, permission_required
+from datetime import datetime, timedelta
+import importcsv
 from party.decorators import require_party
-from party.util import get_party
+from pms.party.models import Party
 from schedule.models import Schedule, Event, EventForm, LocationForm, EventHistory
-from django.http import HttpResponse,HttpResponseNotFound
-from django.db.models import Q
-from datetime import datetime,timedelta
-import json
 
 
 @require_party
-def schedule(request,futureonly=True):
+def schedule(request, futureonly=True):
     """simple view. futureonly=True shows only things that are in the future
     or don't have an end time and started less than 5 minutes ago."""
     party = Party.objects.get(slug=request.party)
@@ -73,16 +72,21 @@ class UploadFileForm(forms.Form):
 
 
 @require_party
+@transaction.commit_on_success
 @permission_required('schedule.admin')
 def importschedule(request):
     success = False
     if request.method == 'POST':
         form = UploadFileForm(request.POST, request.FILES)
         if form.is_valid():
-            import importcsv
             party = Party.objects.get(slug=request.party)
             schedule = Schedule.objects.get(party=party)
-            importcsv.parse_csv(schedule, form.files['file'].read())
+            csv_data = form.files['file'].read()
+            locations, events = importcsv.parse_csv(csv_data)
+            try:
+                importcsv.update_schedule_database(schedule, locations, events)
+            except Exception, e:
+                import pdb; pdb.set_trace()
             return render_to_response(
                 "import_success.html",
                 context_instance=RequestContext(request))
@@ -117,16 +121,19 @@ def create(request):
                 success = True
                 return admin(request, event.pk, True, 'Event created',
                 party=request.party)
-        
         else:
             form = EventForm()
 
-        return render_to_response("events_createform.html",{'form':form,
-        'success':success},context_instance=RequestContext(request))
+        return render_to_response(
+            "events_createform.html",
+            {'form': form,
+             'success': success},
+            context_instance=RequestContext(request))
     except Exception as e:
         pass
     party = Party.objects.get(slug=party)
     return render_to_response('schedule_index.html', {'party':party},context_instance=RequestContext(request))
+
 
 @require_party
 @permission_required('schedule.admin')
@@ -139,11 +146,12 @@ def delete(request, event=0):
     event.delete()
     return HttpResponse("Event has been terminated with extreme prejudice.")
 
+
 @require_party
 @permission_required('schedule.admin')
 def changelog(request):
     """
-    Show changes from EventHistory. This is going to be a huge list. 
+    Show changes from EventHistory. This is going to be a huge list.
     Worry about pagination later.
     """
     try:
@@ -215,6 +223,7 @@ def eventsjson(request):
 
 class AsmCsvImportForm(forms.Form):
     subject = forms.CharField(label=u"Assembly CSV data", widget=forms.Textarea)
+
 
 @require_party
 @permission_required('schedule.admin')
