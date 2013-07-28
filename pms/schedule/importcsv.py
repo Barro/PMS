@@ -193,7 +193,10 @@ def parse_event(row):
     event['original_time'] = extract_date(row['start_date'])
     event['description'] = row['description_en'].decode('UTF-8')
     event['description_fi'] = row['description_fi'].decode('UTF-8')
-    event['url'] = row['url']
+    url = row['url']
+    if len(url) and url.startswith("/"):
+        url = "http://www.assembly.org%s" % url
+    event['url'] = url
     event['canceled'] = (row['canceled'].lower() == 'yes')
     return event
 
@@ -204,7 +207,10 @@ def parse_location(row):
     location['key'] = convertNameToKey(location_name)
     location['name'] = location_name
     location['name_fi'] = row['location_fi']
-    location['url'] = row.get('location_url', None)
+    url = row.get('location_url', "")
+    if len(url) and url.startswith("/"):
+        url = "http://www.assembly.org%s" % url
+    location['url'] = url
     return location
 
 

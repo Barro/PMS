@@ -7,12 +7,14 @@ from django.db.models import Q
 from django.shortcuts import render_to_response
 from django.http import HttpResponse, HttpResponseNotFound
 from django.template import RequestContext
-from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.auth.decorators import permission_required
 from datetime import datetime, timedelta
 import importcsv
+import json
 from party.decorators import require_party
 from pms.party.models import Party
-from schedule.models import Schedule, Event, EventForm, LocationForm, EventHistory
+from schedule.models import Schedule, Event, \
+    EventForm, Location, LocationForm, EventHistory
 
 
 @require_party
@@ -205,6 +207,15 @@ def createlocation(request):
     return admin(request, location.pk, True, 'Location created', party=request.party)
 
 
+def encode_export_date(datetimeobj):
+    pass
+
+
+def dict_add_if_value_nonzero(dictionary, key, value):
+    if value:
+        dictionary[key] = value
+
+
 @require_party
 def eventsjson(request):
     """Shows all non-hidden events in .JSON format."""
@@ -214,11 +225,58 @@ def eventsjson(request):
         schedule = Schedule.objects.get(party=party)
     except Schedule.DoesNotExist:
         return {}
-    events = Event.objects.filter(schedule=schedule, hidden=False).order_by("time", "order")
-    data = serializers.serialize("json", events)
-    return HttpResponse(
-        data,
-        mimetype="application/javascript")
+
+    result = {}
+
+    location_objects = Location.objects.filter(schedule=schedule)
+    locations = {}
+    for location in location_objects:
+        location_data = {'name': location.name}
+        dict_add_if_value_nonzero(location_data, 'name_fi', location.name_fi)
+        dict_add_if_value_nonzero(location_data, 'url', location.url)
+        dict_add_if_value_nonzero(
+            location_data, 'description', location.description)
+        dict_add_if_value_nonzero(
+            location_data, 'description_fi', location.description_fi)
+        locations[location.key] = location_data
+    result['locations'] = locations
+
+    events = []
+    event_objects = Event.objects.filter(
+        schedule=schedule, hidden=False).order_by("time", "order")
+    for event in event_objects:
+        event_key = "%s-%s" % (party.slug, event.key)
+        event_data = {
+            'key': event_key,
+            'name': event.name,
+            'start_time': encode_export_date(event.time)
+            }
+        dict_add_if_value_nonzero(event_data, 'name_fi', event.name_fi)
+        dict_add_if_value_nonzero(
+            event_data,
+            'original_start_time',
+            encode_export_date(event.original_time))
+        dict_add_if_value_nonzero(
+            event_data, 'end_time', encode_export_date(event.end_time))
+        dict_add_if_value_nonzero(
+            event_data, 'url', encode_export_date(event.url))
+        dict_add_if_value_nonzero(
+            event_data,
+            'description',
+            encode_export_date(event.description))
+        dict_add_if_value_nonzero(
+            event_data,
+            'description_fi',
+            encode_export_date(event.description_fi))
+        flags = []
+        if event.canceled:
+            flags.append("canceled")
+        flags.extend(event.categories.split(","))
+        events.append(event_data)
+    result['events'] = events
+
+    data = json.dumps(result)
+    return HttpResponse(data, mimetype="application/javascript")
 
 
 class AsmCsvImportForm(forms.Form):
