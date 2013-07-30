@@ -1,6 +1,7 @@
 import StringIO
 import csv
 import datetime
+import dateutil.tz
 import models
 from schedule.models import Location
 from schedule.models import Event
@@ -10,8 +11,9 @@ import unidecode
 
 
 def extract_date(date):
-    return datetime.datetime.strptime(date, "%d.%m.%y %H:%M")
-
+    result = datetime.datetime.strptime(date, "%d.%m.%y %H:%M")
+    result.replace(tzinfo=dateutil.tz.tzlocal())
+    return result
 
 def get_row_errors(fields, field_data):
     errors = []

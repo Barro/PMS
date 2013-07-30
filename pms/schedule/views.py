@@ -9,6 +9,7 @@ from django.http import HttpResponse, HttpResponseNotFound
 from django.template import RequestContext
 from django.contrib.auth.decorators import permission_required
 from datetime import datetime, timedelta
+import dateutil.tz
 import importcsv
 import json
 from party.decorators import require_party
@@ -214,8 +215,8 @@ def createlocation(request):
     return admin(request, location.pk, True, 'Location created', party=request.party)
 
 
-def encode_export_date(datetimeobj):
-    pass
+def encode_export_date(datetimeobj, tzlocal):
+    return datetimeobj.replace(tzinfo=tzlocal).strftime("%Y-%m%-dT%H:%M%z")
 
 
 def dict_add_if_value_nonzero(dictionary, key, value):
@@ -235,6 +236,7 @@ def eventsjson(request):
 
     result = {}
 
+    tzlocal = dateutil.tz.tzlocal()
     location_objects = Location.objects.filter(schedule=schedule)
     locations = {}
     for location in location_objects:
@@ -256,29 +258,26 @@ def eventsjson(request):
         event_data = {
             'key': event_key,
             'name': event.name,
-            'start_time': encode_export_date(event.time)
+            'start_time': encode_export_date(event.time, tzlocal)
             }
         dict_add_if_value_nonzero(event_data, 'name_fi', event.name_fi)
         dict_add_if_value_nonzero(
             event_data,
             'original_start_time',
-            encode_export_date(event.original_time))
+            encode_export_date(event.original_time, tzlocal))
         dict_add_if_value_nonzero(
-            event_data, 'end_time', encode_export_date(event.end_time))
+            event_data, 'end_time', encode_export_date(event.end_time, tzlocal))
+        dict_add_if_value_nonzero(event_data, 'url', event.url)
         dict_add_if_value_nonzero(
-            event_data, 'url', encode_export_date(event.url))
+            event_data, 'description', event.description)
         dict_add_if_value_nonzero(
-            event_data,
-            'description',
-            encode_export_date(event.description))
-        dict_add_if_value_nonzero(
-            event_data,
-            'description_fi',
-            encode_export_date(event.description_fi))
+            event_data, 'description_fi', event.description_fi)
         flags = []
         if event.canceled:
             flags.append("canceled")
-        flags.extend(event.categories.split(","))
+        flags.extend(event.flags.split(","))
+        event_data['flags'] = flags
+        event_data['categories'] = event.categories.split(",")
         events.append(event_data)
     result['events'] = events
 
