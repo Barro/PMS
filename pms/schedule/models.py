@@ -14,8 +14,9 @@ import django.dispatch
 
 schedule_updated = django.dispatch.Signal()
 
+
 class Schedule(models.Model):
-	name = models.CharField(max_length=255,unique=True)
+        name = models.CharField(max_length=255,unique=True)
 
 	party = models.ForeignKey('party.Party')
 #	 events = models.ManyToManyField(Event)
@@ -50,7 +51,7 @@ class Location(models.Model):
 		permissions = (
 			('admin','admin schedule locations'),
 			('manage','manage schedule locations'),
-		) 
+		)
 
 
 class Event(models.Model):
@@ -64,6 +65,7 @@ class Event(models.Model):
 	hidden = models.BooleanField(default=False)
 	canceled = models.BooleanField(default=False)
 	cancel_reason = models.TextField(u"Cancellation reason", blank=True)
+	flags = models.CharField("Comma separated list of tag-like flags.", max_length=255, blank=True)
 	categories = models.CharField("Comma separated list of tag-like categories.", max_length=255, blank=True)
         order = models.FloatField(default=0.0)
 #        major = models.BooleanField(default=False)
@@ -133,7 +135,7 @@ def event_onsave(sender, instance, raw, **kwargs):
 	try:
 		try:
 			ev = Event.objects.get(pk=instance.pk)
-			changes = "" 
+			changes = ""
 			instancedict = model_to_dict(instance)
 			evdict = model_to_dict(ev)
 			for name in instancedict.keys():

@@ -10,7 +10,7 @@ import unidecode
 
 
 def extract_date(date):
-    return datetime.datetime.strptime(date, "%a %d.%m.%y %H:%M")
+    return datetime.datetime.strptime(date, "%d.%m.%y %H:%M")
 
 
 def get_row_errors(fields, field_data):
@@ -41,7 +41,7 @@ def get_row_errors(fields, field_data):
                 u"For example date and time 'Saturday 11th of February 2011 "
                 u"18:00' would be 'Sat 12.02.11 18:00'.")
 
-    for field in ('title_fi', 'title_en', 'location_fi', 'location_en'):
+    for field in ('title_fi', 'title_en'):
         try:
             field_data[field].decode('UTF-8')
         except UnicodeDecodeError, e:
@@ -99,7 +99,7 @@ def convertNameToKey(name):
     return special_character_normalized.strip("-")
 
 
-def parse_csv(data):
+def parse_events(data):
     sniff_data = data[:50]
     if ";" not in sniff_data and "\t" not in sniff_data:
         raise InvalidParserError()
@@ -115,11 +115,7 @@ def parse_csv(data):
         raise ScheduleImportError(messages)
 
     data = StringIO.StringIO(data)
-    fields = ('id', 'outline_number', 'name', 'duration', 'start_date',
-              'finish_date', 'asmtv', 'bigscreen', 'major', 'public',
-              'sumtask', 'class_', 'url', 'title_en', 'title_fi',
-              'location_en', 'location_fi', 'location_url',
-              'outline_level', 'description_en', 'description_fi', 'canceled')
+    fields = "id;name;duration;start_date;finish_date;asmtv;bigscreen;major;public;onsite;sumtask;category;subcategory;url;title_en;title_fi;location_id;canceled".split(";")
     reader = csv.DictReader(data, fieldnames=fields, dialect=dialect)
     reader = iter(reader)
 
@@ -146,11 +142,10 @@ def parse_csv(data):
         raise ScheduleImportError(messages)
 
     rows = list(reader)
-    locations = {}
     events = []
 
     for row in rows:
-        if row['public'] != 'Yes':
+        if row['public'].lower() != 'yes':
             continue
         errors = get_row_errors(fields, row)
         if len(errors) > 0:
@@ -184,14 +179,12 @@ def parse_csv(data):
                 ]
             raise ScheduleImportError(messages)
 
-        location = parse_location(row)
-        locations[location['key']] = location
         event = parse_event(row)
-        event['location'] = location
         events.append(event)
 
-    return locations, events
-    
+    return events
+
+
 def parse_location_csv(data):
     print "Parsing location data"
     sniff_data = data[:50]
@@ -237,7 +230,6 @@ def parse_location_csv(data):
 
     rows = list(reader)
     locations = []
-    events = []
 
     for row in rows:
         errors = get_location_errors(fields, row)
@@ -273,23 +265,24 @@ def parse_location_csv(data):
             raise ScheduleImportError(messages)
 
         location = locationparser(row)
-        locations.append(location)     
+        locations.append(location)
 
     return locations
 
+
 def locationparser(row):
-    location_ID = row['Location_ID'].decode('UTF-8')
     location = {}
-    location['ID'] = convertNameToKey(location_ID)
+    location['key'] = row['Location_ID'].decode('UTF-8')
     location['name'] = row['Location_EN']
     location['name_fi'] = row['Location_FI']
     location['description'] = row['Description_EN']
-    location['description_fi'] = row['Description_FI']        
+    location['description_fi'] = row['Description_FI']
     url = row.get('Location_URL', "")
     if len(url) and url.startswith("/"):
         url = "http://www.assembly.org%s" % url
     location['url'] = url
     return location
+
 
 def parse_event(row):
     try:
@@ -301,23 +294,26 @@ def parse_event(row):
             ]
         raise ScheduleImportError(messages)
     event = {'key': event_id}
+    event['location_key'] = row['location_id']
     event['name'] = row['title_en'].decode('UTF-8')
     event['name_fi'] = row['title_fi'].decode('UTF-8')
-    categories = []
+    flags = []
     if (row['major'].lower() == 'yes'):
-        categories.append("major")
+        flags.append("major")
     if (row['asmtv'].lower() == 'yes'):
-        categories.append("asmtv")
+        flags.append("asmtv")
     if (row['bigscreen'].lower() == 'yes'):
-        categories.append("bigscreen")
-    if (row['class_'].lower() == 'yes'):
-        categories.append(row['class_'].decode('UTF-8'))
-    event['categories'] = ",".join(categories)
+        flags.append("bigscreen")
+    if (row['onsite'].lower() == 'yes'):
+        flags.append("onsite")
+    event['flags'] = ",".join(flags)
     event['start_time'] = extract_date(row['start_date'])
     event['end_time'] = extract_date(row['finish_date'])
     event['original_time'] = extract_date(row['start_date'])
-    event['description'] = row['description_en'].decode('UTF-8')
-    event['description_fi'] = row['description_fi'].decode('UTF-8')
+    categories = [row['category'].decode('UTF-8')]
+    if row['subcategory']:
+        categories.append(row['subcategory'].decode('UTF-8'))
+    event["categories"] = ",".join(categories)
     url = row['url']
     if len(url) and url.startswith("/"):
         url = "http://www.assembly.org%s" % url
@@ -331,7 +327,7 @@ def parse_location(row):
     location = {}
     location['key'] = convertNameToKey(location_name)
     location['name'] = location_name
-    location['name_fi'] = row['location_fi']
+    location['name_fi'] = row['title_fi']
     url = row.get('location_url', "")
     if len(url) and url.startswith("/"):
         url = "http://www.assembly.org%s" % url
@@ -356,34 +352,41 @@ def update_schedule_database(schedule, locations, events):
     keyed_locations = {}
     for location in all_locations:
         keyed_locations[location.key] = location
-    delete_unknown_locations(schedule, all_locations, locations)
-    if (events != None):
+    if locations is not None:
+        delete_unknown_locations(schedule, all_locations, locations)
+    else:
+        locations = []
+    if events is not None:
         all_events = Event.objects.filter(schedule=schedule)
         event_keys = set([event['key'] for event in events])
         delete_unknown_events(schedule, all_events, event_keys)
+    else:
+        events = []
     for location in locations:
         try:
             location_obj = Location.objects.get(
-                schedule=schedule, key=location['ID'])
+                schedule=schedule, key=location['key'])
         except Location.DoesNotExist:
             location_obj = models.Location()
-        location_obj.key = location['ID']
+        location_obj.key = location['key']
         location_obj.schedule = schedule
         location_obj.name = location['name']
-        location_obj.description = location['description']        
-        location_obj.description_fi = location['description_fi']                
+        location_obj.description = location['description']
+        location_obj.description_fi = location['description_fi']
         location_obj.name_fi = location['name_fi']
         location_obj.url = location['url']
         location_obj.save()
+        keyed_locations[location_obj.key] = location_obj
 
-    if (events != None):
+    if events is not None:
         for event in events:
             try:
                 event_obj = Event.objects.get(schedule=schedule, key=event['key'])
             except Event.DoesNotExist:
                 event_obj = models.Event()
             event_obj.schedule = schedule
-            event_obj.location = keyed_locations[event['location']['key']]
+            if event['location_key']:
+                event_obj.location = keyed_locations[event['location_key']]
             event_obj.key = event['key']
             event_obj.name = event['name']
             event_obj.name_fi = event['name_fi']
@@ -391,9 +394,7 @@ def update_schedule_database(schedule, locations, events):
             event_obj.end_time = event['end_time']
             event_obj.original_time = event['original_time']
             event_obj.url = event['url']
-            event_obj.description = event['description']
-            event_obj.description_fi = event['description_fi']
+            event_obj.flags = event['flags']
             event_obj.categories = event['categories']
             event_obj.canceled = event['canceled']
             event_obj.save()
-        print "saving events"
