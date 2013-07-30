@@ -70,7 +70,8 @@ from django import forms
 
 class UploadFileForm(forms.Form):
     from django.core.files.uploadedfile import SimpleUploadedFile
-    file  = forms.FileField()
+    eventfile  = forms.FileField()
+    locationfile = forms.FileField()
 
 
 @require_party
@@ -83,12 +84,20 @@ def importschedule(request):
         if form.is_valid():
             party = Party.objects.get(slug=request.party)
             schedule = Schedule.objects.get(party=party)
-            csv_data = form.files['file'].read()
-            locations, events = importcsv.parse_csv(csv_data)
-            try:
-                importcsv.update_schedule_database(schedule, locations, events)
-            except Exception, e:
-                import pdb; pdb.set_trace()
+            if 'locationfile' in form.files:
+	              csv_location_data = form.files['locationfile'].read()
+	              locations = importcsv.parse_location_csv(csv_location_data)                       
+	              try:
+				            importcsv.update_schedule_database(schedule, locations, None)
+	              except Exception, e:
+				            import pdb; pdb.set_trace()	
+            if 'eventfile' in form.files:
+	              csv_event_data = form.files['eventfile'].read()
+	              locations, events = importcsv.parse_csv(csv_event_data)	              
+	              try:
+				            importcsv.update_schedule_database(schedule, locations, events)
+	              except Exception, e:
+				            import pdb; pdb.set_trace()	  				                        
             return render_to_response(
                 "import_success.html",
                 context_instance=RequestContext(request))
@@ -96,7 +105,7 @@ def importschedule(request):
         form = UploadFileForm()
     return render_to_response(
         "events_importform.html",
-        {'form': form, 'success': success},
+        {'form1': form, 'form2': form, 'success': success},
         context_instance=RequestContext(request))
 
 
@@ -315,3 +324,5 @@ def importasmcsv(request):
         return
     success = True
     return admin(request, location.pk, True, 'Location created', party=request.party)
+    
+    

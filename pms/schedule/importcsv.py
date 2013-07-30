@@ -51,6 +51,43 @@ def get_row_errors(fields, field_data):
 
     return errors
 
+def get_location_errors(fields, field_data):
+    errors = []
+    for field in fields:
+        if field_data.get(field, None) is None:
+            errors.append(u"Field '%s' is missing." % field)
+
+    if len(errors) > 0:
+        return errors
+
+    if None in field_data:
+        errors.append(
+            "There are extra %d field values with event %s (%s)." %
+            (len(field_data[None]), field_data['id'].decode("utf-8"),
+             field_data['title_en'].decode("utf-8")))
+        errors.append(
+            u"Make sure that you don't have accidentally pasted text "
+            u"with tab characters to descriptions or titles!")
+
+    for field in ('start_date', 'finish_date'):
+        try:
+            extract_date(field_data[field])
+        except ValueError, e:
+            errors.append(
+                u"Date string on field '%s' is invalid (%s)." % (field, e))
+            errors.append(
+                u"For example date and time 'Saturday 11th of February 2011 "
+                u"18:00' would be 'Sat 12.02.11 18:00'.")
+
+    for field in ('title_fi', 'title_en', 'location_fi', 'location_en'):
+        try:
+            field_data[field].decode('UTF-8')
+        except UnicodeDecodeError, e:
+            errors.append(
+                u"Could not decode field '%s' as UTF-8. Make sure that you "
+                u"are sending an UTF-8 encoded file." % field)
+
+    return errors
 
 class InvalidParserError(RuntimeError):
     pass
@@ -164,7 +201,106 @@ def parse_csv(data):
         events.append(event)
 
     return locations, events
+    
+def parse_location_csv(data):
+    sniff_data = data[:50]
+    if ";" not in sniff_data and "\t" not in sniff_data:
+        raise InvalidParserError()
+    try:
+        dialect = csv.Sniffer().sniff(data)
+    except csv.Error, e:
+        messages = [
+            (u"%s." % e.message, "warning"),
+            (u"Make sure that all lines contain the same number of field "
+             u"delimiter characters.",),
+            (u"First row of data: %s" % data.split("\n")[0],),
+            ]
+        raise ScheduleImportError(messages)
 
+    data = StringIO.StringIO(data)
+    fields = ('Location_ID', 'Location_EN', 'Location_FI', 'Location_URL', 'Description_EN',
+              'Description_FI')
+    reader = csv.DictReader(data, fieldnames=fields, dialect=dialect)
+    reader = iter(reader)
+
+    # Grab all the public events so that the raw data can be shown.
+    public_data = StringIO.StringIO()
+    writer = csv.DictWriter(
+        public_data,
+        fieldnames=fields,
+        dialect=dialect,
+        quotechar="\\")
+
+    # Ignore the first row
+    header = reader.next()
+    try:
+        writer.writerow(header)
+    except (ValueError, TypeError), e:
+        # This error comes only when there are too many fields in data.
+        field_count = reduce(
+            lambda x, y: type(y) == list and x + len(y) or x + 1,
+            header.values(),
+            0)
+        messages = [(u"Data contains %d fields when expecting %d." %
+                    (field_count, len(fields)), "warning")]
+        raise ScheduleImportError(messages)
+
+    rows = list(reader)
+    locations = {}
+    events = []
+
+    for row in rows:
+        errors = get_location_errors(fields, row)
+        if len(errors) > 0:
+            messages = [
+                (u"Schedule data has an invalid row", "warning")
+                ]
+            for error in errors:
+                messages.append((error, "warning"))
+                messages.append((row, "warning"))
+            raise ScheduleImportError(messages)
+        try:
+            writer.writerow(row)
+        except (ValueError, TypeError), e:
+            messages = [
+                (u"Unexpected error happened (ValueError): %s" %
+                    e.message, "warning"),
+                (str(row),)]
+            raise ScheduleImportError(messages)
+        except csv.Error, e:
+            messages = [
+                (u"Unexpected error happened (csv.Error): %s" %
+                    e.message, "warning"),
+                (str(row),)
+                ]
+            raise ScheduleImportError(messages)
+        except TypeError, e:
+            messages = [
+                (u"Unexpected error happened (TypeError): %s" %
+                    e.message, "warning"),
+                (str(row),)
+                ]
+            raise ScheduleImportError(messages)
+
+        location = locationparser(row)
+        locations.append(location)
+        print location        
+
+    return locations
+
+def locationparser(row):
+    location_ID = row['Location_ID'].decode('UTF-8')
+    location = {}
+    location['ID'] = convertNameToKey(Location_ID)
+    location['name'] = row['Location_EN']
+    location['name_fi'] = row['Location_FI']
+    location['description'] = row['Description_EN']
+    location['description_fi'] = row['Description_FI']        
+    url = row.get('Location_URL', "")
+    if len(url) and url.startswith("/"):
+        url = "http://www.assembly.org%s" % url
+    location['url'] = url
+    return location
 
 def parse_event(row):
     try:

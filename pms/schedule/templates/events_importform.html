@@ -5,13 +5,13 @@
 
 <form enctype="multipart/form-data" action="{% url schedule.views.importschedule party=party.slug %}" method="POST"
 id="importButton">
-<p>Upload csv file.</p>
+<p>Upload schedule csv file.</p>
 {% csrf_token %}
 <table>
-{{form.as_table}}
+{{form1.as_table}}
 </table>
 {% block event_form_extra %}
-
 {% endblock %}
 </form>
+
 
