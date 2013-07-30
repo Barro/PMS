@@ -70,8 +70,8 @@ from django import forms
 
 class UploadFileForm(forms.Form):
     from django.core.files.uploadedfile import SimpleUploadedFile
-    eventfile  = forms.FileField()
-    locationfile = forms.FileField()
+    eventfile  = forms.FileField(required=False)
+    locationfile = forms.FileField(required=False)
 
 
 @require_party
@@ -82,6 +82,7 @@ def importschedule(request):
     if request.method == 'POST':
         form = UploadFileForm(request.POST, request.FILES)
         if form.is_valid():
+            print "form is valid"
             party = Party.objects.get(slug=request.party)
             schedule = Schedule.objects.get(party=party)
             if 'locationfile' in form.files:

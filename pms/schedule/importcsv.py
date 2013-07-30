@@ -203,6 +203,7 @@ def parse_csv(data):
     return locations, events
     
 def parse_location_csv(data):
+    print "Parsing location data"
     sniff_data = data[:50]
     if ";" not in sniff_data and "\t" not in sniff_data:
         raise InvalidParserError()
