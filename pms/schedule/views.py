@@ -82,18 +82,24 @@ def importschedule(request):
     if request.method == 'POST':
         form = UploadFileForm(request.POST, request.FILES)
         if form.is_valid():
-            print "form is valid"
             party = Party.objects.get(slug=request.party)
             schedule = Schedule.objects.get(party=party)
             if 'locationfile' in form.files:
 	              csv_location_data = form.files['locationfile'].read()
+	              import string
+	              csv_location_data = string.replace(csv_location_data, "\r\n", "\n")
+	              csv_location_data = string.replace(csv_location_data, "\r", "\n")
 	              locations = importcsv.parse_location_csv(csv_location_data)                       
 	              try:
 				            importcsv.update_schedule_database(schedule, locations, None)
-	              except Exception, e:
+	              except Exception, e:            
 				            import pdb; pdb.set_trace()	
             if 'eventfile' in form.files:
+	              print "eventfile"
 	              csv_event_data = form.files['eventfile'].read()
+	              import string
+	              csv_event_data = string.replace(csv_event_data, "\r\n", "\n")
+	              csv_event_data = string.replace(csv_event_data, "\r", "\n")	              
 	              locations, events = importcsv.parse_csv(csv_event_data)	              
 	              try:
 				            importcsv.update_schedule_database(schedule, locations, events)

@@ -69,23 +69,13 @@ def get_location_errors(fields, field_data):
             u"Make sure that you don't have accidentally pasted text "
             u"with tab characters to descriptions or titles!")
 
-    for field in ('start_date', 'finish_date'):
-        try:
-            extract_date(field_data[field])
-        except ValueError, e:
-            errors.append(
-                u"Date string on field '%s' is invalid (%s)." % (field, e))
-            errors.append(
-                u"For example date and time 'Saturday 11th of February 2011 "
-                u"18:00' would be 'Sat 12.02.11 18:00'.")
-
-    for field in ('title_fi', 'title_en', 'location_fi', 'location_en'):
-        try:
-            field_data[field].decode('UTF-8')
-        except UnicodeDecodeError, e:
-            errors.append(
-                u"Could not decode field '%s' as UTF-8. Make sure that you "
-                u"are sending an UTF-8 encoded file." % field)
+#    for field in ('Location_ID', 'Location_EN', 'Location_FI', 'Location_URL', 'Description_EN', 'Description_FI'):
+#        try:
+#            field_data[field].decode('UTF-8')
+#        except UnicodeDecodeError, e:
+#            errors.append(
+#                u"Could not decode field '%s' as UTF-8. Make sure that you "
+#                u"are sending an UTF-8 encoded file." % field)
 
     return errors
 
@@ -219,8 +209,7 @@ def parse_location_csv(data):
         raise ScheduleImportError(messages)
 
     data = StringIO.StringIO(data)
-    fields = ('Location_ID', 'Location_EN', 'Location_FI', 'Location_URL', 'Description_EN',
-              'Description_FI')
+    fields = ('Location_ID', 'Location_EN', 'Location_FI', 'Location_URL', 'Description_EN', 'Description_FI')
     reader = csv.DictReader(data, fieldnames=fields, dialect=dialect)
     reader = iter(reader)
 
@@ -247,7 +236,7 @@ def parse_location_csv(data):
         raise ScheduleImportError(messages)
 
     rows = list(reader)
-    locations = {}
+    locations = []
     events = []
 
     for row in rows:
@@ -284,15 +273,14 @@ def parse_location_csv(data):
             raise ScheduleImportError(messages)
 
         location = locationparser(row)
-        locations.append(location)
-        print location        
+        locations.append(location)     
 
     return locations
 
 def locationparser(row):
     location_ID = row['Location_ID'].decode('UTF-8')
     location = {}
-    location['ID'] = convertNameToKey(Location_ID)
+    location['ID'] = convertNameToKey(location_ID)
     location['name'] = row['Location_EN']
     location['name_fi'] = row['Location_FI']
     location['description'] = row['Description_EN']
@@ -369,38 +357,43 @@ def update_schedule_database(schedule, locations, events):
     for location in all_locations:
         keyed_locations[location.key] = location
     delete_unknown_locations(schedule, all_locations, locations)
-    all_events = Event.objects.filter(schedule=schedule)
-    event_keys = set([event['key'] for event in events])
-    delete_unknown_events(schedule, all_events, event_keys)
-
-    for location in locations.values():
+    if (events != None):
+        all_events = Event.objects.filter(schedule=schedule)
+        event_keys = set([event['key'] for event in events])
+        delete_unknown_events(schedule, all_events, event_keys)
+    for location in locations:
         try:
             location_obj = Location.objects.get(
-                schedule=schedule, key=location['key'])
+                schedule=schedule, key=location['ID'])
         except Location.DoesNotExist:
             location_obj = models.Location()
+        location_obj.key = location['ID']
         location_obj.schedule = schedule
         location_obj.name = location['name']
+        location_obj.description = location['description']        
+        location_obj.description_fi = location['description_fi']                
         location_obj.name_fi = location['name_fi']
         location_obj.url = location['url']
         location_obj.save()
 
-    for event in events:
-        try:
-            event_obj = Event.objects.get(schedule=schedule, key=event['key'])
-        except Event.DoesNotExist:
-            event_obj = models.Event()
-        event_obj.schedule = schedule
-        event_obj.location = keyed_locations[event['location']['key']]
-        event_obj.key = event['key']
-        event_obj.name = event['name']
-        event_obj.name_fi = event['name_fi']
-        event_obj.time = event['start_time']
-        event_obj.end_time = event['end_time']
-        event_obj.original_time = event['original_time']
-        event_obj.url = event['url']
-        event_obj.description = event['description']
-        event_obj.description_fi = event['description_fi']
-        event_obj.categories = event['categories']
-        event_obj.canceled = event['canceled']
-        event_obj.save()
+    if (events != None):
+        for event in events:
+            try:
+                event_obj = Event.objects.get(schedule=schedule, key=event['key'])
+            except Event.DoesNotExist:
+                event_obj = models.Event()
+            event_obj.schedule = schedule
+            event_obj.location = keyed_locations[event['location']['key']]
+            event_obj.key = event['key']
+            event_obj.name = event['name']
+            event_obj.name_fi = event['name_fi']
+            event_obj.time = event['start_time']
+            event_obj.end_time = event['end_time']
+            event_obj.original_time = event['original_time']
+            event_obj.url = event['url']
+            event_obj.description = event['description']
+            event_obj.description_fi = event['description_fi']
+            event_obj.categories = event['categories']
+            event_obj.canceled = event['canceled']
+            event_obj.save()
+        print "saving events"
