@@ -216,7 +216,7 @@ def createlocation(request):
 
 
 def encode_export_date(datetimeobj, tzlocal):
-    return datetimeobj.replace(tzinfo=tzlocal).strftime("%Y-%m%-dT%H:%M%z")
+    return datetimeobj.replace(tzinfo=tzlocal).strftime("%Y-%m-%dT%H:%M%z")
 
 
 def dict_add_if_value_nonzero(dictionary, key, value):
@@ -270,6 +270,9 @@ def eventsjson(request):
         dict_add_if_value_nonzero(event_data, 'url', event.url)
         dict_add_if_value_nonzero(
             event_data, 'description', event.description)
+        if event.location:
+            dict_add_if_value_nonzero(
+                event_data, 'location_key', event.location.key)
         dict_add_if_value_nonzero(
             event_data, 'description_fi', event.description_fi)
         flags = []
