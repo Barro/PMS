@@ -57,14 +57,15 @@ class Location(models.Model):
 class Event(models.Model):
         key = models.CharField(max_length=255, blank=False, null=False)
 	name = models.CharField(max_length=255, blank=True, null=True)
+	name_fi = models.CharField(u"Nimi suomeksi", max_length=255, blank=True, null=True)
 	time = models.DateTimeField()
 	end_time = models.DateTimeField(blank=True, null=True, help_text="Default is start_time + 5 minutes")
 	original_time = models.DateTimeField(help_text=u"Can not be set when creating an event.")
 	url = models.CharField(max_length=255, blank=True)
 	description = models.TextField(blank=True)
+	description_fi = models.TextField(u"Kuvaus suomeksi", blank=True)
 	hidden = models.BooleanField(default=False)
 	canceled = models.BooleanField(default=False)
-	cancel_reason = models.TextField(u"Cancellation reason", blank=True)
 	flags = models.CharField("Comma separated list of tag-like flags.", max_length=255, blank=True)
 	categories = models.CharField("Comma separated list of tag-like categories.", max_length=255, blank=True)
         order = models.FloatField(default=0.0)
@@ -72,10 +73,6 @@ class Event(models.Model):
 #        bigscreen = models.BooleanField(default=False)
 #        class_ = models.TextField(blank=True)
 #        asmtv = models.BooleanField(defauls=False)
-
-	# i18n
-	name_fi = models.CharField(u"Nimi suomeksi", max_length=255, blank=True, null=True)
-	description_fi = models.TextField(u"Kuvaus suomeksi", blank=True)
 
 	location = models.ForeignKey('schedule.Location', null=True)
 	schedule = models.ForeignKey('schedule.Schedule')
