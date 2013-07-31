@@ -224,6 +224,15 @@ def dict_add_if_value_nonzero(dictionary, key, value):
         dictionary[key] = value
 
 
+def clean_json_dictionary_value(dictionary, key):
+    if key not in dictionary:
+        return
+    if not dictionary[key]:
+        return
+    dictionary[key] = dictionary[key].replace("\r", "")
+    dictionary[key] = dictionary[key].strip()
+
+
 @require_party
 def eventsjson(request):
     """Shows all non-hidden events in .JSON format."""
@@ -270,17 +279,21 @@ def eventsjson(request):
         dict_add_if_value_nonzero(event_data, 'url', event.url)
         dict_add_if_value_nonzero(
             event_data, 'description', event.description)
+        clean_json_dictionary_value(event_data, 'description')
         if event.location:
             dict_add_if_value_nonzero(
                 event_data, 'location_key', event.location.key)
         dict_add_if_value_nonzero(
             event_data, 'description_fi', event.description_fi)
+        clean_json_dictionary_value(event_data, 'description_fi')
         flags = []
         if event.canceled:
             flags.append("canceled")
         flags.extend(event.flags.split(","))
+        flags = [flag.strip() for flag in flags]
         event_data['flags'] = flags
-        event_data['categories'] = event.categories.split(",")
+        event_data['categories'] = [
+            category.strip() for category in event.categories.split(",")]
         events.append(event_data)
     result['events'] = events
 
