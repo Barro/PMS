@@ -77,6 +77,8 @@ class Event(models.Model):
 	location = models.ForeignKey('schedule.Location', null=True)
 	schedule = models.ForeignKey('schedule.Schedule')
 
+        cancel_reason = models.CharField(u"Cancellation reason", max_length=255, blank=True)
+
 	def save(self, *args, **kwargs):
 		super(Event, self).save(*args, **kwargs)
 
