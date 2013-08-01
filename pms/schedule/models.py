@@ -56,18 +56,38 @@ class Location(models.Model):
 
 class Event(models.Model):
         key = models.CharField(max_length=255, blank=False, null=False)
-	name = models.CharField(max_length=255, blank=True, null=True)
-	name_fi = models.CharField(u"Nimi suomeksi", max_length=255, blank=True, null=True)
-	time = models.DateTimeField()
-	end_time = models.DateTimeField(blank=True, null=True, help_text="Default is start_time + 5 minutes")
-	original_time = models.DateTimeField(help_text=u"Can not be set when creating an event.")
-	url = models.CharField(max_length=255, blank=True)
-	description = models.TextField(blank=True)
-	description_fi = models.TextField(u"Kuvaus suomeksi", blank=True)
-	hidden = models.BooleanField(default=False)
-	canceled = models.BooleanField(default=False)
-	flags = models.CharField("Comma separated list of tag-like flags.", max_length=255, blank=True)
-	categories = models.CharField("Comma separated list of tag-like categories.", max_length=255, blank=True)
+        name = models.CharField(max_length=255, blank=True, null=True)
+        name_fi = models.CharField(u"Nimi suomeksi", max_length=255, blank=True, null=True)
+        time = models.DateTimeField()
+        end_time = models.DateTimeField(blank=True, null=True, help_text="Default is start_time + 5 minutes")
+        original_time = models.DateTimeField(help_text=u"Can not be set when creating an event.")
+        url = models.CharField(max_length=255, blank=True)
+        description = models.TextField(blank=True)
+        description_fi = models.TextField(u"Kuvaus suomeksi", blank=True)
+        hidden = models.BooleanField(default=False)
+        canceled = models.BooleanField(default=False)
+        flags = models.CharField(
+                "Comma separated list of tag-like flags",
+                help_text="""Possible flags are:
+<ul>
+<li>major: major events get more visibility than non-major</li>
+<li>asmtv: event is shown on AssemblyTV</li>
+<li>bigscreen: event is shown on the big screen</li>
+<li>onsite: event enables participation from the visitor</li>
+</ul>""", max_length=255, blank=True)
+        categories = models.CharField(
+                "Major and minor category possibly separated by comma",
+                help_text="""Categories are used to filter events by different criterias.
+
+Possible categories:
+
+<ul>
+<li>Event: general events. Possible subcategories: Concert, Show </li>
+<li>Compo: demoscene related competitions. Possible subcategories: Deadline, Show, Jury, Prizes</li>
+<li>Game: esports related competitions. Possible subcategories: Semifinals, Finals</li>
+<li>Seminar: seminars. No subcategories for seminars.</li>
+</ul>""",
+                max_length=255, blank=True)
         order = models.FloatField(default=0.0)
 #        major = models.BooleanField(default=False)
 #        bigscreen = models.BooleanField(default=False)
