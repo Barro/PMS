@@ -8,8 +8,10 @@ from models import Schedule, Event, Location
 
 #class EventAdmin(admin.ModelAdmin):
 #    inlines = [ScheduleInline]
+class EventAdmin(admin.ModelAdmin):
+	list_per_page = 10000
 
 admin.site.register(Schedule)
 admin.site.register(Location)
-admin.site.register(Event)
+admin.site.register(Event, EventAdmin)
 #admin.site.register(Event, EventAdmin)

@@ -47,7 +47,7 @@ class Location(models.Model):
 	description_fi = models.TextField(u"Kuvaus suomeksi", blank=True)
 
 	class Meta:
-		ordering = ["schedule", "name"]
+		ordering = ["name"]
 		permissions = (
 			('admin','admin schedule locations'),
 			('manage','manage schedule locations'),
