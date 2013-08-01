@@ -55,7 +55,12 @@ class Location(models.Model):
 
 
 class Event(models.Model):
-        key = models.CharField(max_length=255, blank=False, null=False)
+        key = models.CharField(
+                "Key is used as part of event's URL address",
+                help_text="""Use the normalized event name as the key.
+For example "StarCraft 2: HotS casual tournament" would result in an event
+key that is "sc2-hots-casual-tournament".
+""", max_length=255, blank=False, null=False)
         name = models.CharField(max_length=255, blank=True, null=True)
         name_fi = models.CharField(u"Nimi suomeksi", max_length=255, blank=True, null=True)
         time = models.DateTimeField()
