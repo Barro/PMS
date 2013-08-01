@@ -56,10 +56,12 @@ class Location(models.Model):
 
 class Event(models.Model):
         key = models.CharField(
-                "Key is used as part of event's URL address",
-                help_text="""Use the normalized event name as the key.
-For example "StarCraft 2: HotS casual tournament" would result in an event
-key that is "sc2-hots-casual-tournament".
+                "Event key",
+                help_text="""Key is used as part of event's URL address.
+
+Use the normalized event name as the key. For example "StarCraft 2: HotS
+casual tournament" would result in an event key that is
+"sc2-hots-casual-tournament".
 """, max_length=255, blank=False, null=False)
         name = models.CharField(max_length=255, blank=True, null=True)
         name_fi = models.CharField(u"Nimi suomeksi", max_length=255, blank=True, null=True)
@@ -72,8 +74,10 @@ key that is "sc2-hots-casual-tournament".
         hidden = models.BooleanField(default=False)
         canceled = models.BooleanField(default=False)
         flags = models.CharField(
-                "Comma separated list of tag-like flags",
-                help_text="""Possible flags are:
+                "Flags",
+                help_text="""Comma separated list of tag-like flags.
+
+Possible flags are:
 <ul>
 <li>major: major events get more visibility than non-major</li>
 <li>asmtv: event is shown on AssemblyTV</li>
@@ -81,8 +85,10 @@ key that is "sc2-hots-casual-tournament".
 <li>onsite: event enables participation from the visitor</li>
 </ul>""", max_length=255, blank=True)
         categories = models.CharField(
-                "Major and minor category possibly separated by comma",
-                help_text="""Categories are used to filter events by different criterias.
+                "Major and minor categories",
+                help_text="""Major, and possibly, minor category separated by a comma.
+
+Categories are used to filter events by different criterias.
 
 Possible categories:
 
