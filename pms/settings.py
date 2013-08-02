@@ -71,7 +71,7 @@ SOUTH_DATABASE_ADAPTER = 'south.db.'+localsettings.DB
 # If running in a Windows environment this must be set to the same as your
 # system time zone.
 TIME_ZONE = 'Europe/Helsinki'
-
+DATE_FORMAT = '%d %B, %Y'
 TIME_FORMAT = "H:i"
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
