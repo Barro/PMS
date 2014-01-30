@@ -291,11 +291,15 @@ def eventsjson(request):
         flags = []
         if event.canceled:
             flags.append("canceled")
-        flags.extend(event.flags.split(","))
+        if event.flags:
+            flags.extend(event.flags.split(","))
         flags = [flag.strip() for flag in flags]
+        flags = [flag for flag in flags if flag]
         event_data['flags'] = flags
-        event_data['categories'] = [
+        categories = [
             category.strip() for category in event.categories.split(",")]
+        categories = [category for category in categories if category]
+        event_data['categories'] = categories
         events.append(event_data)
     result['events'] = events
 
