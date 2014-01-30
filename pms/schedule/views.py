@@ -216,6 +216,8 @@ def createlocation(request):
 
 
 def encode_export_date(datetimeobj, tzlocal):
+    if not datetimeobj:
+        return None
     return datetimeobj.replace(tzinfo=tzlocal).strftime("%Y-%m-%dT%H:%M%z")
 
 
